@@ -1,0 +1,8 @@
+---
+gitlab_url: https://gitlab.com
+gitlab_token: provided-gitlab-token
+gitlab_executor: docker
+gitlab_image: debian:latest
+gitlab_tags:
+gitlab_run_untagged: true
+gitlab_locked: false

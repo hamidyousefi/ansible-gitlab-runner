@@ -1,0 +1,16 @@
+---
+- name: install downloaded package
+  apt:
+    deb: https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb
+    force_apt_get: yes
+    install_recommends: yes
+    update_cache: yes
+  environment:
+    http_proxy: "{{ proxy.http }}"
+    https_proxy:  "{{ proxy.https | default(proxy.http) }}"
+
+- name: register gitlab runners
+  command: |
+    gitlab-runner register --non-interactive --url {{ gitlab_url }} --registration-token {{ gitlab_token }} \
+      --executor "{{ gitlab_executor }}" --docker-image {{ gitlab_image }} --description "{{ inventory_hostname }}" \
+      --tag-list "{{ gitlab_tags }}" --run-untagged="{{ gitlab_run_untagged }}" --locked="{{ gitlab_locked }}" --access-level="not_protected"
