@@ -1,4 +1,7 @@
 ---
+http_proxy: ""
+https_proxy: ""
+
 gitlab_url: https://gitlab.com
 gitlab_token: provided-gitlab-token
 gitlab_executor: docker
