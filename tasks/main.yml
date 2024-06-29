@@ -1,16 +1,56 @@
 ---
-- name: install downloaded package
-  apt:
-    deb: https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb
-    force_apt_get: yes
-    install_recommends: yes
-    update_cache: yes
-  environment:
-    http_proxy: "{{ proxy.http }}"
-    https_proxy:  "{{ proxy.https | default(proxy.http) }}"
+- name: Install necessary packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gpg
+      - debian-archive-keyring
+      - apt-transport-https
+    update_cache: true
+    force_apt_get: true
 
-- name: register gitlab runners
-  command: |
-    gitlab-runner register --non-interactive --url {{ gitlab_url }} --registration-token {{ gitlab_token }} \
-      --executor "{{ gitlab_executor }}" --docker-image {{ gitlab_image }} --description "{{ inventory_hostname }}" \
-      --tag-list "{{ gitlab_tags }}" --run-untagged="{{ gitlab_run_untagged }}" --locked="{{ gitlab_locked }}" --access-level="not_protected"
+- name: Add gpg key
+  ansible.builtin.apt_key:
+    url: https://packages.gitlab.com/runner/gitlab-runner/gpgkey
+    state: present
+
+- name: Add source to lists
+  ansible.builtin.apt_repository:
+    repo: "deb https://packages.gitlab.com/runner/gitlab-runner/debian/ {{ ansible_distribution_release }} main"
+    filename: gitlab-runner
+
+- name: Add source repository to lists
+  ansible.builtin.apt_repository:
+    repo: "deb-src https://packages.gitlab.com/runner/gitlab-runner/debian/ {{ ansible_distribution_release }} main"
+    filename: gitlab-runner
+
+- name: Setup apt pinning
+  ansible.builtin.template:
+    src: apt-gitlab-runner.pref.j2
+    dest: /etc/apt/preferences.d/pin-gitlab-runner.pref
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install gitlab runner
+  ansible.builtin.apt:
+    name: gitlab-runner
+    update_cache: true
+    force_apt_get: true
+
+- name: Add cleanup script
+  ansible.builtin.template:
+    src: gitlab-runner-cleanup.sh.j2
+    dest: /usr/local/bin/gitlab-runner-cleanup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Add cronjob for cleanup
+  ansible.builtin.cron:
+    name: "gitlab runner cleanup"
+    state: present
+    minute: "0"
+    hour: "0"
+    user: root
+    job: "/usr/local/bin/gitlab-runner-cleanup.sh"
